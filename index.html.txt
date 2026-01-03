@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enes ♥ Yasemin Çiftliği</title>
+<style>
+body { margin:0; overflow:hidden; font-family:Arial }
+#ui {
+  position:fixed; top:10px; left:10px;
+  background:rgba(255,255,255,0.95);
+  padding:10px; border-radius:12px; z-index:10;
+}
+button { margin:3px; }
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+💰 <span id="money">200</span><br>
+🌽 <span id="corn">0</span>
+🥔 <span id="potato">0</span><br>
+🥛 <span id="milk">0</span>
+🥚 <span id="egg">0</span><br><br>
+
+<button onclick="plant('corn')">🌽 Mısır E</button>
+<button onclick="plant('potato')">🥔 Patates E</button><br>
+<button onclick="buyCow()">🐄 İnek Al (100)</button>
+<button onclick="milkCow()">🥛 Süt Sağ</button><br>
+<button onclick="buyChicken()">🐔 Tavuk Al (50)</button>
+<button onclick="collectEgg()">🥚 Yumurta Al</button><br>
+<button onclick="sellAll()">🛒 Hepsini Sat</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script>
+/* === VERİ === */
+let money=200,corn=0,potato=0,milk=0,egg=0;
+let cows=[], chickens=[], crops=[];
+const tile=1.3;
+
+/* === UI === */
+const u=()=>{moneyEl.textContent=money;
+cornEl.textContent=corn;potatoEl.textContent=potato;
+milkEl.textContent=milk;eggEl.textContent=egg;}
+const moneyEl=document.getElementById("money"),
+cornEl=document.getElementById("corn"),
+potatoEl=document.getElementById("potato"),
+milkEl=document.getElementById("milk"),
+eggEl=document.getElementById("egg");
+
+/* === THREE === */
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,1000);
+cam.position.set(0,6,6);
+const r=new THREE.WebGLRenderer({antialias:true});
+r.setSize(innerWidth,innerHeight);
+document.body.appendChild(r.domElement);
+
+/* === IŞIK & GÜN GECE === */
+let day=true;
+setInterval(()=>{
+ day=!day;
+ scene.background=new THREE.Color(day?0x87ceeb:0x0b1d3a);
+},15000);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const sun=new THREE.DirectionalLight(0xffffff,1);
+sun.position.set(10,20,10);
+scene.add(sun);
+
+/* === ZEMİN === */
+for(let x=-6;x<=6;x++)
+for(let z=-6;z<=6;z++){
+ const t=new THREE.Mesh(
+  new THREE.PlaneGeometry(tile,tile),
+  new THREE.MeshStandardMaterial({color:0x55aa55})
+ );
+ t.rotation.x=-Math.PI/2;
+ t.position.set(x*tile,0,z*tile);
+ scene.add(t);
+}
+
+/* === KIZ === */
+const girl=new THREE.Group();
+const head=new THREE.Mesh(
+ new THREE.SphereGeometry(0.3,32,32),
+ new THREE.MeshStandardMaterial({color:0xffe0bd})
+);
+head.position.y=1.6;
+const hair=new THREE.Mesh(
+ new THREE.SphereGeometry(0.34,32,32),
+ new THREE.MeshStandardMaterial({color:0x000})
+);
+hair.position.y=1.7;
+const body=new THREE.Mesh(
+ new THREE.CylinderGeometry(0.25,0.3,0.9,32),
+ new THREE.MeshStandardMaterial({color:0xff69b4})
+);
+body.position.y=1.1;
+girl.add(head,hair,body);
+scene.add(girl);
+
+/* === HAREKET === */
+const k={};
+addEventListener("keydown",e=>k[e.key]=1);
+addEventListener("keyup",e=>k[e.key]=0);
+function move(){
+ const s=0.04;
+ if(k.w) girl.position.z-=s;
+ if(k.s) girl.position.z+=s;
+ if(k.a) girl.position.x-=s;
+ if(k.d) girl.position.x+=s;
+}
+
+/* === TARIM === */
+function plant(type){
+ if(money<5)return;
+ const c=new THREE.Mesh(
+  new THREE.CylinderGeometry(0.15,0.15,0.1,12),
+  new THREE.MeshStandardMaterial({color:type==="corn"?0xff0:0x8b4513})
+ );
+ c.position.set(
+  Math.round(girl.position.x/tile)*tile,
+  0.05,
+  Math.round(girl.position.z/tile)*tile
+ );
+ c.userData={type,grown:false};
+ scene.add(c); crops.push(c);
+ money-=5; u();
+ setTimeout(()=>{
+  c.scale.y=3; c.position.y=0.3; c.userData.grown=true;
+ },5000);
+}
+
+/* === İNEK === */
+function buyCow(){
+ if(money<100)return;
+ const cow=new THREE.Mesh(
+  new THREE.BoxGeometry(0.8,0.6,0.4),
+  new THREE.MeshStandardMaterial({color:0xffffff})
+ );
+ cow.position.set(4,0.3,0);
+ scene.add(cow); cows.push(cow);
+ money-=100; u();
+}
+function milkCow(){
+ cows.forEach(c=>{
+  if(c.position.distanceTo(girl.position)<1){
+   milk++; u();
+  }
+ });
+}
+
+/* === TAVUK === */
+function buyChicken(){
+ if(money<50)return;
+ const ch=new THREE.Mesh(
+  new THREE.SphereGeometry(0.25,16,16),
+  new THREE.MeshStandardMaterial({color:0xffd700})
+ );
+ ch.position.set(-4,0.25,0);
+ scene.add(ch); chickens.push(ch);
+ money-=50; u();
+ setInterval(()=>egg++,8000);
+}
+function collectEgg(){ u(); }
+
+/* === SATIŞ === */
+function sellAll(){
+ money += corn*5 + potato*6 + milk*10 + egg*3;
+ corn=potato=milk=egg=0;
+ u();
+}
+
+/* === LOOP === */
+function anim(){
+ requestAnimationFrame(anim);
+ move();
+ cam.position.x=girl.position.x;
+ cam.position.z=girl.position.z+6;
+ cam.lookAt(girl.position);
+ r.render(scene,cam);
+}
+anim();
+</script>
+</body>
+</html>
