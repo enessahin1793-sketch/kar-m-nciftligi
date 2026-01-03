@@ -12,23 +12,17 @@ body{margin:0;overflow:hidden;font-family:Arial}
  padding:10px;border-radius:12px;z-index:10
 }
 button{margin:2px}
-#dialog{
- position:fixed;bottom:90px;left:50%;
- transform:translateX(-50%);
- background:white;padding:10px 20px;
- border-radius:12px;display:none
-}
-#controls{
- position:fixed;bottom:10px;left:50%;
- transform:translateX(-50%);
- display:flex;gap:10px;z-index:10
-}
-.ctrl{
- width:60px;height:60px;
- background:rgba(255,255,255,.9);
+#joystick{
+ position:fixed;bottom:20px;left:20px;
+ width:120px;height:120px;
+ background:rgba(255,255,255,.25);
  border-radius:50%;
- display:flex;align-items:center;justify-content:center;
- font-size:26px;user-select:none
+ touch-action:none;
+}
+#stick{
+ position:absolute;left:40px;top:40px;
+ width:40px;height:40px;
+ background:white;border-radius:50%;
 }
 </style>
 </head>
@@ -50,14 +44,9 @@ button{margin:2px}
 <button onclick="sellAll()">🛒 Hepsini Sat</button>
 </div>
 
-<div id="dialog"></div>
-
-<!-- MOBİL KONTROLLER -->
-<div id="controls">
- <div class="ctrl" data-k="a">⬅</div>
- <div class="ctrl" data-k="w">⬆</div>
- <div class="ctrl" data-k="s">⬇</div>
- <div class="ctrl" data-k="d">➡</div>
+<!-- JOYSTICK -->
+<div id="joystick">
+ <div id="stick"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
@@ -126,100 +115,53 @@ body.position.y=1.1;
 girl.add(head,hair,body);
 scene.add(girl);
 
-/* === HAREKET === */
+/* === KLAVYE (PC) === */
 const keys={};
 addEventListener("keydown",e=>keys[e.key]=true);
 addEventListener("keyup",e=>keys[e.key]=false);
 
-/* MOBİL */
-document.querySelectorAll(".ctrl").forEach(b=>{
- b.addEventListener("touchstart",e=>{
-  keys[b.dataset.k]=true;
- });
- b.addEventListener("touchend",e=>{
-  keys[b.dataset.k]=false;
- });
+/* === JOYSTICK (MOBİL) === */
+const joy=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+let joyX=0, joyY=0;
+
+joy.addEventListener("touchmove",e=>{
+ e.preventDefault();
+ const r=60;
+ const rect=joy.getBoundingClientRect();
+ let x=e.touches[0].clientX-rect.left-r;
+ let y=e.touches[0].clientY-rect.top-r;
+ const d=Math.hypot(x,y);
+ if(d>r){x=x/d*r;y=y/d*r;}
+ stick.style.left=x+r-20+"px";
+ stick.style.top=y+r-20+"px";
+ joyX=x/r;
+ joyY=y/r;
+});
+joy.addEventListener("touchend",()=>{
+ stick.style.left="40px";
+ stick.style.top="40px";
+ joyX=joyY=0;
 });
 
+/* === HAREKET === */
 function move(){
- const s=0.04;
+ const s=0.05;
  if(keys.w) girl.position.z-=s;
  if(keys.s) girl.position.z+=s;
  if(keys.a) girl.position.x-=s;
  if(keys.d) girl.position.x+=s;
+
+ girl.position.x+=joyX*s;
+ girl.position.z+=joyY*s;
 }
 
-/* === TARIM === */
-function plant(type){
- if(money<5)return;
- money-=5;updateUI();
- setTimeout(()=>{
-  type==="corn"?corn++:potato++;
-  updateUI();
- },5000);
-}
-
-/* === İNEK === */
-function buyCow(){
- if(money<100)return;
- const cow=new THREE.Mesh(
-  new THREE.BoxGeometry(.8,.6,.4),
-  new THREE.MeshStandardMaterial({color:0xffffff})
- );
- cow.position.set(4,.3,0);
- scene.add(cow);
- cows.push(cow);
- money-=100;updateUI();
-}
-function milkCow(){
- cows.forEach(c=>{
-  if(c.position.distanceTo(girl.position)<1){
-   milk++;updateUI();
-  }
- });
-}
-
-/* === TAVUK === */
-function buyChicken(){
- if(money<50)return;
- const ch=new THREE.Mesh(
-  new THREE.SphereGeometry(.25,16,16),
-  new THREE.MeshStandardMaterial({color:0xffd700})
- );
- ch.position.set(-4,.25,0);
- scene.add(ch);
- chickens.push(ch);
- money-=50;updateUI();
- setInterval(()=>{egg++;updateUI()},8000);
-}
-
-/* === SATIŞ === */
-function sellAll(){
- money+=corn*5+potato*6+milk*10+egg*3;
- corn=potato=milk=egg=0;
- updateUI();
-}
-
-/* === KAYIT === */
-function saveGame(){
- localStorage.setItem("farmSave",JSON.stringify({
-  money,corn,potato,milk,egg,
-  x:girl.position.x,z:girl.position.z,
-  cows:cows.length,chickens:chickens.length
- }));
-}
-function loadGame(){
- const d=JSON.parse(localStorage.getItem("farmSave"));
- if(!d)return;
- money=d.money;corn=d.corn;potato=d.potato;
- milk=d.milk;egg=d.egg;
- girl.position.x=d.x;girl.position.z=d.z;
- for(let i=0;i<d.cows;i++)buyCow();
- for(let i=0;i<d.chickens;i++)buyChicken();
- updateUI();
-}
-setInterval(saveGame,5000);
-loadGame();
+/* === TARIM / HAYVAN / SATIŞ === */
+function plant(t){if(money<5)return;money-=5;setTimeout(()=>{t==="corn"?corn++:potato++;updateUI()},5000);updateUI()}
+function buyCow(){if(money<100)return;money-=100;updateUI()}
+function milkCow(){milk++;updateUI()}
+function buyChicken(){if(money<50)return;money-=50;updateUI();setInterval(()=>{egg++;updateUI()},8000)}
+function sellAll(){money+=corn*5+potato*6+milk*10+egg*3;corn=potato=milk=egg=0;updateUI()}
 
 /* === LOOP === */
 function anim(){
