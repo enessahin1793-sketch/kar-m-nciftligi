@@ -17,12 +17,12 @@ button{margin:2px}
  width:120px;height:120px;
  background:rgba(255,255,255,.25);
  border-radius:50%;
- touch-action:none;
+ touch-action:none
 }
 #stick{
  position:absolute;left:40px;top:40px;
  width:40px;height:40px;
- background:white;border-radius:50%;
+ background:white;border-radius:50%
 }
 </style>
 </head>
@@ -44,24 +44,21 @@ button{margin:2px}
 <button onclick="sellAll()">🛒 Hepsini Sat</button>
 </div>
 
-<!-- JOYSTICK -->
-<div id="joystick">
- <div id="stick"></div>
-</div>
+<div id="joystick"><div id="stick"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 <script>
 /* === VERİ === */
 let money=200,corn=0,potato=0,milk=0,egg=0;
-let cows=[],chickens=[];
+let cows=[],chickens=[],plants=[];
 const tile=1.3;
 
 /* === UI === */
-const moneyEl=document.getElementById("money");
-const cornEl=document.getElementById("corn");
-const potatoEl=document.getElementById("potato");
-const milkEl=document.getElementById("milk");
-const eggEl=document.getElementById("egg");
+const moneyEl=document.getElementById("money"),
+cornEl=document.getElementById("corn"),
+potatoEl=document.getElementById("potato"),
+milkEl=document.getElementById("milk"),
+eggEl=document.getElementById("egg");
 function updateUI(){
  moneyEl.textContent=money;
  cornEl.textContent=corn;
@@ -78,6 +75,7 @@ cam.position.set(0,6,6);
 const r=new THREE.WebGLRenderer({antialias:true});
 r.setSize(innerWidth,innerHeight);
 document.body.appendChild(r.domElement);
+
 scene.add(new THREE.AmbientLight(0xffffff,.7));
 const sun=new THREE.DirectionalLight(0xffffff,1);
 sun.position.set(10,20,10);
@@ -115,53 +113,101 @@ body.position.y=1.1;
 girl.add(head,hair,body);
 scene.add(girl);
 
-/* === KLAVYE (PC) === */
-const keys={};
-addEventListener("keydown",e=>keys[e.key]=true);
-addEventListener("keyup",e=>keys[e.key]=false);
-
-/* === JOYSTICK (MOBİL) === */
+/* === JOYSTICK === */
 const joy=document.getElementById("joystick");
 const stick=document.getElementById("stick");
-let joyX=0, joyY=0;
-
+let joyX=0,joyY=0;
 joy.addEventListener("touchmove",e=>{
  e.preventDefault();
- const r=60;
- const rect=joy.getBoundingClientRect();
+ const r=60,rect=joy.getBoundingClientRect();
  let x=e.touches[0].clientX-rect.left-r;
  let y=e.touches[0].clientY-rect.top-r;
  const d=Math.hypot(x,y);
- if(d>r){x=x/d*r;y=y/d*r;}
+ if(d>r){x=x/d*r;y=y/d*r}
  stick.style.left=x+r-20+"px";
  stick.style.top=y+r-20+"px";
- joyX=x/r;
- joyY=y/r;
+ joyX=x/r; joyY=y/r;
 });
 joy.addEventListener("touchend",()=>{
- stick.style.left="40px";
- stick.style.top="40px";
+ stick.style.left="40px";stick.style.top="40px";
  joyX=joyY=0;
 });
 
 /* === HAREKET === */
 function move(){
  const s=0.05;
- if(keys.w) girl.position.z-=s;
- if(keys.s) girl.position.z+=s;
- if(keys.a) girl.position.x-=s;
- if(keys.d) girl.position.x+=s;
-
  girl.position.x+=joyX*s;
  girl.position.z+=joyY*s;
 }
 
-/* === TARIM / HAYVAN / SATIŞ === */
-function plant(t){if(money<5)return;money-=5;setTimeout(()=>{t==="corn"?corn++:potato++;updateUI()},5000);updateUI()}
-function buyCow(){if(money<100)return;money-=100;updateUI()}
-function milkCow(){milk++;updateUI()}
-function buyChicken(){if(money<50)return;money-=50;updateUI();setInterval(()=>{egg++;updateUI()},8000)}
-function sellAll(){money+=corn*5+potato*6+milk*10+egg*3;corn=potato=milk=egg=0;updateUI()}
+/* === TARIM (GÖRÜNÜR) === */
+function plant(type){
+ if(money<5)return;
+ money-=5; updateUI();
+
+ const plant=new THREE.Mesh(
+  new THREE.CylinderGeometry(.1,.15,.1,8),
+  new THREE.MeshStandardMaterial({color:type==="corn"?0x228B22:0x8B4513})
+ );
+ plant.position.set(
+  Math.round(girl.position.x/tile)*tile,
+  0.05,
+  Math.round(girl.position.z/tile)*tile
+ );
+ scene.add(plant);
+ plants.push({mesh:plant,type,grown:false});
+
+ setTimeout(()=>{
+  plant.scale.y=3;
+  plant.position.y=.3;
+  type==="corn"?corn++:potato++;
+  updateUI();
+ },5000);
+}
+
+/* === İNEK (GÖRÜNÜR) === */
+function buyCow(){
+ if(money<100)return;
+ money-=100; updateUI();
+
+ const cow=new THREE.Mesh(
+  new THREE.BoxGeometry(.8,.5,.4),
+  new THREE.MeshStandardMaterial({color:0xffffff})
+ );
+ cow.position.set(4,0.25,0);
+ scene.add(cow);
+ cows.push(cow);
+}
+function milkCow(){
+ cows.forEach(c=>{
+  if(c.position.distanceTo(girl.position)<1){
+   milk++; updateUI();
+  }
+ });
+}
+
+/* === TAVUK (GÖRÜNÜR) === */
+function buyChicken(){
+ if(money<50)return;
+ money-=50; updateUI();
+
+ const ch=new THREE.Mesh(
+  new THREE.SphereGeometry(.25,16,16),
+  new THREE.MeshStandardMaterial({color:0xffd700})
+ );
+ ch.position.set(-4,.25,0);
+ scene.add(ch);
+ chickens.push(ch);
+
+ setInterval(()=>{egg++;updateUI()},8000);
+}
+
+/* === SATIŞ === */
+function sellAll(){
+ money+=corn*5+potato*6+milk*10+egg*3;
+ corn=potato=milk=egg=0;
+ updateUI();
+}
 
 /* === LOOP === */
 function anim(){
