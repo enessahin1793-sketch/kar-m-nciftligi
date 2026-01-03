@@ -2,21 +2,33 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Enes ♥ Yasemin Çiftliği</title>
 <style>
-body { margin:0; overflow:hidden; font-family:Arial }
+body{margin:0;overflow:hidden;font-family:Arial}
 #ui{
- position:fixed; top:10px; left:10px;
- background:rgba(255,255,255,0.95);
- padding:10px; border-radius:12px; z-index:10;
+ position:fixed;top:10px;left:10px;
+ background:rgba(255,255,255,.95);
+ padding:10px;border-radius:12px;z-index:10
 }
 button{margin:2px}
 #dialog{
- position:fixed; bottom:20px; left:50%;
+ position:fixed;bottom:90px;left:50%;
  transform:translateX(-50%);
- background:white; padding:10px 20px;
- border-radius:12px; display:none;
+ background:white;padding:10px 20px;
+ border-radius:12px;display:none
+}
+#controls{
+ position:fixed;bottom:10px;left:50%;
+ transform:translateX(-50%);
+ display:flex;gap:10px;z-index:10
+}
+.ctrl{
+ width:60px;height:60px;
+ background:rgba(255,255,255,.9);
+ border-radius:50%;
+ display:flex;align-items:center;justify-content:center;
+ font-size:26px;user-select:none
 }
 </style>
 </head>
@@ -40,45 +52,47 @@ button{margin:2px}
 
 <div id="dialog"></div>
 
+<!-- MOBİL KONTROLLER -->
+<div id="controls">
+ <div class="ctrl" data-k="a">⬅</div>
+ <div class="ctrl" data-k="w">⬆</div>
+ <div class="ctrl" data-k="s">⬇</div>
+ <div class="ctrl" data-k="d">➡</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 <script>
 /* === VERİ === */
 let money=200,corn=0,potato=0,milk=0,egg=0;
-let cows=[], chickens=[], crops=[];
+let cows=[],chickens=[];
 const tile=1.3;
 
 /* === UI === */
-const moneyEl=money=document.getElementById("money");
+const moneyEl=document.getElementById("money");
 const cornEl=document.getElementById("corn");
 const potatoEl=document.getElementById("potato");
 const milkEl=document.getElementById("milk");
 const eggEl=document.getElementById("egg");
 function updateUI(){
- document.getElementById("money").textContent=money;
- cornEl.textContent=corn; potatoEl.textContent=potato;
- milkEl.textContent=milk; eggEl.textContent=egg;
+ moneyEl.textContent=money;
+ cornEl.textContent=corn;
+ potatoEl.textContent=potato;
+ milkEl.textContent=milk;
+ eggEl.textContent=egg;
 }
 
 /* === THREE === */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
-const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,1000);
+const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,1000);
 cam.position.set(0,6,6);
 const r=new THREE.WebGLRenderer({antialias:true});
 r.setSize(innerWidth,innerHeight);
 document.body.appendChild(r.domElement);
-
-scene.add(new THREE.AmbientLight(0xffffff,0.7));
+scene.add(new THREE.AmbientLight(0xffffff,.7));
 const sun=new THREE.DirectionalLight(0xffffff,1);
 sun.position.set(10,20,10);
 scene.add(sun);
-
-/* === GÜN GECE === */
-let day=true;
-setInterval(()=>{
- day=!day;
- scene.background=new THREE.Color(day?0x87ceeb:0x0b1d3a);
-},15000);
 
 /* === ZEMİN === */
 for(let x=-6;x<=6;x++)
@@ -92,20 +106,20 @@ for(let z=-6;z<=6;z++){
  scene.add(t);
 }
 
-/* === KIZ KARAKTER === */
+/* === KIZ === */
 const girl=new THREE.Group();
 const head=new THREE.Mesh(
- new THREE.SphereGeometry(0.3,32,32),
+ new THREE.SphereGeometry(.3,32,32),
  new THREE.MeshStandardMaterial({color:0xffe0bd})
 );
 head.position.y=1.6;
 const hair=new THREE.Mesh(
- new THREE.SphereGeometry(0.34,32,32),
+ new THREE.SphereGeometry(.34,32,32),
  new THREE.MeshStandardMaterial({color:0x000})
 );
 hair.position.y=1.7;
 const body=new THREE.Mesh(
- new THREE.CylinderGeometry(0.25,0.3,0.9,32),
+ new THREE.CylinderGeometry(.25,.3,.9,32),
  new THREE.MeshStandardMaterial({color:0xff69b4})
 );
 body.position.y=1.1;
@@ -114,8 +128,19 @@ scene.add(girl);
 
 /* === HAREKET === */
 const keys={};
-addEventListener("keydown",e=>keys[e.key]=1);
-addEventListener("keyup",e=>keys[e.key]=0);
+addEventListener("keydown",e=>keys[e.key]=true);
+addEventListener("keyup",e=>keys[e.key]=false);
+
+/* MOBİL */
+document.querySelectorAll(".ctrl").forEach(b=>{
+ b.addEventListener("touchstart",e=>{
+  keys[b.dataset.k]=true;
+ });
+ b.addEventListener("touchend",e=>{
+  keys[b.dataset.k]=false;
+ });
+});
+
 function move(){
  const s=0.04;
  if(keys.w) girl.position.z-=s;
@@ -127,41 +152,29 @@ function move(){
 /* === TARIM === */
 function plant(type){
  if(money<5)return;
- const c=new THREE.Mesh(
-  new THREE.CylinderGeometry(0.15,0.15,0.1,12),
-  new THREE.MeshStandardMaterial({color:type==="corn"?0xffd700:0x8b4513})
- );
- c.position.set(
-  Math.round(girl.position.x/tile)*tile,
-  0.05,
-  Math.round(girl.position.z/tile)*tile
- );
- scene.add(c);
- money-=5;
+ money-=5;updateUI();
  setTimeout(()=>{
-  c.scale.y=3; c.position.y=0.3;
   type==="corn"?corn++:potato++;
   updateUI();
  },5000);
- updateUI();
 }
 
 /* === İNEK === */
 function buyCow(){
  if(money<100)return;
  const cow=new THREE.Mesh(
-  new THREE.BoxGeometry(0.8,0.6,0.4),
+  new THREE.BoxGeometry(.8,.6,.4),
   new THREE.MeshStandardMaterial({color:0xffffff})
  );
- cow.position.set(4,0.3,0);
+ cow.position.set(4,.3,0);
  scene.add(cow);
  cows.push(cow);
- money-=100; updateUI();
+ money-=100;updateUI();
 }
 function milkCow(){
  cows.forEach(c=>{
   if(c.position.distanceTo(girl.position)<1){
-   milk++; updateUI();
+   milk++;updateUI();
   }
  });
 }
@@ -170,69 +183,39 @@ function milkCow(){
 function buyChicken(){
  if(money<50)return;
  const ch=new THREE.Mesh(
-  new THREE.SphereGeometry(0.25,16,16),
+  new THREE.SphereGeometry(.25,16,16),
   new THREE.MeshStandardMaterial({color:0xffd700})
  );
- ch.position.set(-4,0.25,0);
+ ch.position.set(-4,.25,0);
  scene.add(ch);
  chickens.push(ch);
- money-=50; updateUI();
- setInterval(()=>{egg++; updateUI();},8000);
+ money-=50;updateUI();
+ setInterval(()=>{egg++;updateUI()},8000);
 }
 
 /* === SATIŞ === */
 function sellAll(){
- money += corn*5 + potato*6 + milk*10 + egg*3;
+ money+=corn*5+potato*6+milk*10+egg*3;
  corn=potato=milk=egg=0;
  updateUI();
 }
 
-/* === NPC KASABA === */
-const dialog=document.getElementById("dialog");
-function createNPC(x,z,color,text){
- const npc=new THREE.Group();
- const h=new THREE.Mesh(
-  new THREE.SphereGeometry(0.25,16,16),
-  new THREE.MeshStandardMaterial({color:0xffe0bd})
- );
- h.position.y=1.4;
- const b=new THREE.Mesh(
-  new THREE.CylinderGeometry(0.25,0.3,0.9,16),
-  new THREE.MeshStandardMaterial({color})
- );
- b.position.y=0.9;
- npc.add(h,b);
- npc.position.set(x,0,z);
- npc.userData.text=text;
- scene.add(npc);
- return npc;
-}
-const npc1=createNPC(8,2,0x87cefa,"Çiftliğin çok tatlı 💕");
-const npc2=createNPC(-8,-2,0xdeb887,"İnekler iyi para kazandırır.");
-
-function checkNPC(npc){
- if(npc.position.distanceTo(girl.position)<1.3){
-  dialog.style.display="block";
-  dialog.textContent=npc.userData.text;
- } else dialog.style.display="none";
-}
-
-/* === KAYIT SİSTEMİ === */
+/* === KAYIT === */
 function saveGame(){
- localStorage.setItem("enesYaseminFarm",JSON.stringify({
+ localStorage.setItem("farmSave",JSON.stringify({
   money,corn,potato,milk,egg,
   x:girl.position.x,z:girl.position.z,
   cows:cows.length,chickens:chickens.length
  }));
 }
 function loadGame(){
- const d=JSON.parse(localStorage.getItem("enesYaseminFarm"));
+ const d=JSON.parse(localStorage.getItem("farmSave"));
  if(!d)return;
- money=d.money; corn=d.corn; potato=d.potato;
- milk=d.milk; egg=d.egg;
- girl.position.x=d.x; girl.position.z=d.z;
- for(let i=0;i<d.cows;i++) buyCow();
- for(let i=0;i<d.chickens;i++) buyChicken();
+ money=d.money;corn=d.corn;potato=d.potato;
+ milk=d.milk;egg=d.egg;
+ girl.position.x=d.x;girl.position.z=d.z;
+ for(let i=0;i<d.cows;i++)buyCow();
+ for(let i=0;i<d.chickens;i++)buyChicken();
  updateUI();
 }
 setInterval(saveGame,5000);
@@ -242,7 +225,6 @@ loadGame();
 function anim(){
  requestAnimationFrame(anim);
  move();
- checkNPC(npc1); checkNPC(npc2);
  cam.position.x=girl.position.x;
  cam.position.z=girl.position.z+6;
  cam.lookAt(girl.position);
